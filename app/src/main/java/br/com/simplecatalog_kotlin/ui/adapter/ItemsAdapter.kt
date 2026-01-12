@@ -8,22 +8,39 @@ import androidx.recyclerview.widget.RecyclerView
 import br.com.simplecatalog_kotlin.databinding.ItemRowBinding
 import br.com.simplecatalog_kotlin.domain.model.Item
 
-class ItemsAdapter :
-    ListAdapter<Item, ItemsAdapter.VH>(ItemDiffCallback()) {
+class ItemsAdapter(
+    private val onItemClick: (Item) -> Unit
+) : ListAdapter<Item, ItemsAdapter.VH>(ItemDiffCallback()) {
+
+    init {
+        setHasStableIds(true)
+    }
+
+    override fun getItemId(position: Int): Long {
+        return getItem(position).id
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
         val binding = ItemRowBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return VH(binding)
+        return VH(binding, onItemClick)
     }
 
     override fun onBindViewHolder(holder: VH, position: Int) {
         holder.bind(getItem(position))
     }
 
-    class VH(private val binding: ItemRowBinding) : RecyclerView.ViewHolder(binding.root) {
+    class VH(
+        private val binding: ItemRowBinding,
+        private val onItemClick: (Item) -> Unit
+    ) : RecyclerView.ViewHolder(binding.root) {
+
         fun bind(item: Item) {
             binding.title.text = item.title
             binding.subtitle.text = item.subtitle
+
+            binding.root.setOnClickListener {
+                onItemClick(item)
+            }
         }
     }
 

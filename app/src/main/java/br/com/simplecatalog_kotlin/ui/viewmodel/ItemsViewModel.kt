@@ -3,27 +3,35 @@ package br.com.simplecatalog_kotlin.ui.viewmodel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import br.com.simplecatalog_kotlin.domain.model.Item
-import java.util.concurrent.Executors
+import br.com.simplecatalog_kotlin.domain.state.UiState
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class ItemsViewModel : ViewModel() {
 
-    private val _loading = MutableLiveData(false)
-    val loading: LiveData<Boolean> = _loading
-
-    private val _items = MutableLiveData<List<Item>>(emptyList())
-    val items: LiveData<List<Item>> = _items
-
-    private val executor = Executors.newSingleThreadExecutor()
+    private val _uiState = MutableLiveData<UiState>(UiState.Empty)
+    val uiState: LiveData<UiState> = _uiState
 
     fun loadItems() {
-        _loading.value = true
+        _uiState.value = UiState.Loading
 
-        executor.execute {
-            try { Thread.sleep(3000) } catch (_: InterruptedException) {}
+        viewModelScope.launch {
+            try {
+                delay(3000)  // Simula IO pesado sem bloquear a Main Thread
 
-            _items.postValue(hardcodedItems())
-            _loading.postValue(false)
+                val list = hardcodedItems()
+
+                _uiState.value = if (list.isEmpty()) {
+                    UiState.Empty
+                } else {
+                    UiState.Success(list)
+                }
+
+            } catch (e: Exception) {
+                _uiState.value = UiState.Error("Falha ao carregar itens: ${e.message ?: "erro desconhecido"}")
+            }
         }
     }
 
@@ -34,8 +42,4 @@ class ItemsViewModel : ViewModel() {
         Item(4, "Feijão", "Carioca • 1kg"),
         Item(5, "Açúcar", "Cristal • 1kg")
     )
-
-    override fun onCleared() {
-        executor.shutdownNow()
-    }
 }
