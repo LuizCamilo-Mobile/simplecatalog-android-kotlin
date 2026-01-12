@@ -2,61 +2,68 @@ package br.com.simplecatalog_kotlin.ui
 
 import android.os.Bundle
 import android.view.View
-import android.widget.Toast
-import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
-import br.com.simplecatalog_kotlin.ui.viewmodel.ItemsViewModel
 import br.com.simplecatalog_kotlin.databinding.ActivityMainBinding
-import br.com.simplecatalog_kotlin.domain.model.Item
 import br.com.simplecatalog_kotlin.domain.state.UiState
 import br.com.simplecatalog_kotlin.ui.adapter.ItemsAdapter
+import br.com.simplecatalog_kotlin.ui.viewmodel.ItemsViewModel
 
 class MainActivity : AppCompatActivity() {
 
-    private val binding by lazy { ActivityMainBinding.inflate(layoutInflater) }
-    private val viewModel: ItemsViewModel by viewModels()
-    private val adapter = ItemsAdapter(::onItemClicked)
+    private lateinit var binding: ActivityMainBinding
+    private lateinit var adapter: ItemsAdapter
+    private lateinit var viewModel: ItemsViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
         setSupportActionBar(binding.toolbar)
 
+        adapter = ItemsAdapter()
         binding.recycler.layoutManager = LinearLayoutManager(this)
         binding.recycler.adapter = adapter
 
+        viewModel = ViewModelProvider(this)[ItemsViewModel::class.java]
+
         viewModel.uiState.observe(this) { state ->
-            when (state) {
-                is UiState.Loading -> {
-                    binding.progress.visibility = View.VISIBLE
-                }
-
-                is UiState.Success -> {
-                    binding.progress.visibility = View.GONE
-                    adapter.submitList(state.items)
-                }
-
-                is UiState.Empty -> {
-                    binding.progress.visibility = View.GONE
-                    adapter.submitList(emptyList())
-                    // opcional: mostrar um "empty state" no layout
-                }
-
-                is UiState.Error -> {
-                    binding.progress.visibility = View.GONE
-                    adapter.submitList(emptyList())
-                    Toast.makeText(this, state.message, Toast.LENGTH_SHORT).show()
-                }
-            }
+            render(state)
         }
 
         viewModel.loadItems()
     }
 
-    private fun onItemClicked(item: Item) {
-        Toast.makeText(this, "Clicou: ${item.title}", Toast.LENGTH_SHORT).show()
-        // ou qualquer outra ação futura: abrir detalhe, navegar, log, etc.
-    }
+    private fun render(state: UiState) {
+        when (state) {
+            UiState.Loading -> {
+                binding.progress.visibility = View.VISIBLE
+                binding.recycler.visibility = View.GONE
+                // se tiver empty/error view, esconder aqui também
+            }
 
+            UiState.Empty -> {
+                binding.progress.visibility = View.GONE
+                binding.recycler.visibility = View.GONE
+                adapter.submitList(emptyList())
+                // mostrar empty view, se existir
+            }
+
+            is UiState.Success -> {
+                binding.progress.visibility = View.GONE
+                binding.recycler.visibility = View.VISIBLE
+                adapter.submitList(state.items)
+            }
+
+            is UiState.Error -> {
+                binding.progress.visibility = View.GONE
+                binding.recycler.visibility = View.GONE
+                adapter.submitList(emptyList())
+                // mostrar mensagem de erro, se existir
+            }
+        }
+    }
 }
